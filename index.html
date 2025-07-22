@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pink Kush</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevents scrollbars from the canvas */
+        }
+        #smoke-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-color: #000000; /* Black background for maximum contrast */
+        }
+        .content-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            pointer-events: none; /* Allows clicks to pass through if needed */
+        }
+        .content-overlay > * {
+            pointer-events: auto; /* Re-enable pointer events for content */
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+
+    <!-- The canvas for the Three.js smoke animation -->
+    <canvas id="smoke-canvas"></canvas>
+
+    <!-- The content that appears over the smoke -->
+    <div class="content-overlay p-8">
+        <header class="absolute top-0 left-0 w-full p-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-wider text-gray-300">PINK KUSH</h1>
+            <nav>
+                <button class="bg-purple-900/30 backdrop-blur-sm border border-purple-600/50 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-800/50 transition-colors duration-300">
+                    MENU
+                </button>
+            </nav>
+        </header>
+
+        <main class="flex flex-col items-center justify-center">
+            <div class="max-w-xl">
+                <h2 class="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 text-gray-200" style="text-shadow: 0 0 30px rgba(0,0,0,0.7);">
+                    Experience Serenity
+                </h2>
+                <!-- Brighter text color and a strong shadow for maximum visibility -->
+                <p class="text-lg text-gray-200 mb-8" style="text-shadow: 0px 1px 6px rgba(0, 0, 0, 0.9);">
+                    An exquisite strain known for its powerful body effects and sweet, delicate aroma. Discover the next level of relaxation.
+                </p>
+                <button class="bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-600 transform hover:scale-105 transition-all duration-300 shadow-lg shadow-purple-800/30">
+                    EXPLORE
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        window.onload = function() {
+            let scene, camera, renderer;
+            let smokeParticles = [];
+            const clock = new THREE.Clock();
+            const smokeSource = new THREE.Vector3(-window.innerWidth / 1.5, -window.innerHeight / 1.8, -800);
+
+            function init() {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
+                camera.position.z = 1000;
+                scene.add(camera);
+
+                const canvas = document.getElementById('smoke-canvas');
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                let smokeTexture = createSmokeTexture();
+                const colorPalette = [
+                    new THREE.Color(0x8A2BE2), // BlueViolet
+                    new THREE.Color(0x9400D3), // DarkViolet
+                    new THREE.Color(0x4B0082)  // Indigo
+                ];
+
+                for (let i = 0; i < 300; i++) {
+                    const particleMaterial = new THREE.SpriteMaterial({
+                        map: smokeTexture,
+                        transparent: true,
+                        blending: THREE.AdditiveBlending,
+                        opacity: 0.5
+                    });
+                    
+                    const particle = new THREE.Sprite(particleMaterial);
+                    
+                    particle.userData = {
+                        life: Math.random() * 12,
+                        initialLife: 10 + Math.random() * 4,
+                        velocity: new THREE.Vector3(),
+                        baseScale: Math.random() * 400 + 200,
+                        color: colorPalette[i % colorPalette.length].clone()
+                    };
+
+                    resetParticle(particle);
+                    smokeParticles.push(particle);
+                    scene.add(particle);
+                }
+
+                window.addEventListener('resize', onWindowResize, false);
+                animate();
+            }
+
+            function resetParticle(particle) {
+                particle.userData.life = particle.userData.initialLife;
+                particle.position.copy(smokeSource);
+                particle.position.x += (Math.random() - 0.5) * 300;
+                particle.position.y += (Math.random() - 0.5) * 300;
+                particle.position.z += (Math.random() - 0.5) * 500;
+
+                const baseVelocity = new THREE.Vector3(1.3, 1.6, -0.3);
+                particle.userData.velocity.copy(baseVelocity);
+                particle.userData.velocity.multiplyScalar(0.7 + Math.random() * 0.5);
+
+                particle.material.opacity = 0;
+                particle.scale.set(0, 0, 0);
+                
+                const highlightColor = new THREE.Color(0xffbcfc);
+                particle.material.color.copy(particle.userData.color).lerp(highlightColor, Math.random() * 0.15);
+            }
+
+            function createSmokeTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const mainGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, canvas.width / 2);
+                mainGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+                mainGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = mainGradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < 20; i++) {
+                    const x = centerX + (Math.random() - 0.5) * 180;
+                    const y = centerY + (Math.random() - 0.5) * 180;
+                    const radius = Math.random() * 60 + 25;
+                    const puffGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                    puffGradient.addColorStop(0, `rgba(255, 255, 255, 0.05)`);
+                    puffGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    ctx.fillStyle = puffGradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                return texture;
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = clock.getDelta();
+                const elapsedTime = clock.getElapsedTime();
+
+                smokeParticles.forEach(particle => {
+                    particle.userData.life -= delta;
+
+                    if (particle.userData.life <= 0) {
+                        resetParticle(particle);
+                    }
+
+                    const turbulence = new THREE.Vector3(
+                        Math.sin(elapsedTime * 0.4 + particle.position.y * 0.005) * 0.2,
+                        Math.cos(elapsedTime * 0.3 + particle.position.x * 0.005) * 0.2,
+                        0
+                    );
+                    
+                    particle.userData.velocity.add(turbulence);
+                    particle.position.addScaledVector(particle.userData.velocity, delta * 60);
+                    particle.userData.velocity.sub(turbulence);
+
+                    const lifeRatio = Math.max(0, particle.userData.life / particle.userData.initialLife);
+                    const smoothFade = Math.sin(lifeRatio * Math.PI);
+                    
+                    // Increased clearing effect for text visibility
+                    // This creates a larger, more transparent area in the center
+                    const distFromCenter = particle.position.length();
+                    const centerFade = Math.min(1.0, distFromCenter * 0.004); 
+                    
+                    particle.material.opacity = smoothFade * 0.25 * centerFade;
+                    
+                    const scale = particle.userData.baseScale * smoothFade;
+                    particle.scale.set(scale, scale, scale);
+                    particle.rotation.z += delta * 0.15 * (particle.position.z > -400 ? 1 : -1);
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                smokeSource.set(-window.innerWidth / 1.5, -window.innerHeight / 1.8, -800);
+            }
+
+            init();
+        };
+    </script>
+
+</body>
+</html>
